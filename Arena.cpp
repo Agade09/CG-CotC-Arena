@@ -392,11 +392,11 @@ template <bool verbose> void Simulate(state &S,const array<strat,2> &M){
         while(true){
             vector<int> colliding_boats;
             for(int i=0;i<S.S.size();++i){
-                const ship &s{S.S[i]};
+                const ship &s=S.S[i];
                 if(s.speed>=spd){
                     for(int j=0;j<S.S.size();++j){
                         if(i!=j){//Don't check collisions with yourself
-                            const ship &s2{S.S[j]};
+                            const ship &s2=S.S[j];
                             const vec new_front=s.front();
                             if(s2.IsBoat(new_front)){//Collision
                                 colliding_boats.push_back(i);
@@ -422,7 +422,7 @@ template <bool verbose> void Simulate(state &S,const array<strat,2> &M){
                 const vec new_front=s.front();
                 auto barrel_it=find_if(S.B.begin(),S.B.end(),[&](const barrel &b){return b.r==new_front;});
                 if(barrel_it!=S.B.end()){
-                    const barrel &b{*barrel_it};
+                    const barrel &b=*barrel_it;
                     s.rum=min(100,s.rum+b.rum);
                     S.B.erase(barrel_it);
                 }
@@ -451,12 +451,12 @@ template <bool verbose> void Simulate(state &S,const array<strat,2> &M){
     while(true){
         vector<int> colliding_boats;
         for(int i=0;i<S.S.size();++i){
-            const ship &s{S.S[i]};
+            const ship &s=S.S[i];
             const play &mv=M[s.owner].at(s.id);
             if(mv.type==STARBOARD || mv.type==PORT){//Rotation
                 for(int j=0;j<S.S.size();++j){
                     if(j!=i){//Don't check collision with yourself
-                        const ship &s2{S.S[j]};
+                        const ship &s2=S.S[j];
                         const vec new_front=s.front(),new_front2=s2.front(),new_back=s.back(),new_back2=s2.back();
                         if(s.IsBoat(new_front2) || s2.IsBoat(new_front) || s.IsBoat(new_back2) || s2.IsBoat(new_back)){//Collision
                             colliding_boats.push_back(i);
@@ -481,7 +481,7 @@ template <bool verbose> void Simulate(state &S,const array<strat,2> &M){
             const vec new_front=s.front(),new_back=s.back();
             auto barrel_it=find_if(S.B.begin(),S.B.end(),[&](const barrel &b){return b.r==new_front || b.r==new_back;});
             if(barrel_it!=S.B.end()){
-                const barrel &b{*barrel_it};
+                const barrel &b=*barrel_it;
                 s.rum=min(100,s.rum+b.rum);
                 S.B.erase(barrel_it);
             }
