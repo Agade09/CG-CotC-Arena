@@ -1,7 +1,6 @@
 # CG-CotC-Arena
 Arena program to play games between two Coders of the Carribbean AIs from Codingame. 
 **Linux only**.
-**Does not handle MOVE**.
 
 ## Usage:
 * Compile the Arena program with the given Makefile
