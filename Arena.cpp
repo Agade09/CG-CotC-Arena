@@ -511,6 +511,96 @@ inline bool Player_Alive(const state &S,const int player)noexcept{
     return find_if(S.S.begin(),S.S.end(),[&](const ship &s){return s.owner==player;})!=S.S.end();
 }
 
+inline double Angle(const vec &a,const vec &b)noexcept{//Angle from a to b, taken from referee
+    const double dy =(b.y-a.y)*sqrt(3)/2;
+    const double dx = b.x-a.x+((a.y-b.y)&1)*0.5;
+    double angle=-atan2(dy,dx)*3/M_PI;
+    if(angle<0){
+        angle+=6;
+    }else if(angle>=6){
+        angle-=6;
+    }
+    return angle;
+}
+
+play Basic_Move(const state &S,const ship &s,const vec &target){//Translated from CG referee
+    if(s.r==target || s.speed==2){
+        return {SLOWER};
+    }
+    else if(s.speed==1){
+        vec n=Neighbour(s.r,s.angle);
+        if(!n.valid()){//Hitting edge of map
+            return {SLOWER};
+        }
+        if(n==target){// Target reached at next turn
+            return {WAIT};
+        }
+
+        const double targetAngle{Angle(s.r,target)};
+        const double angleStraight{min(abs(s.angle-targetAngle),6-abs(s.angle-targetAngle))};
+        const double anglePort{min(abs((s.angle+1)-targetAngle),abs((s.angle-5)-targetAngle))};
+        const double angleStarboard{min(abs((s.angle+5)-targetAngle),abs((s.angle-1)-targetAngle))};
+
+        const double centerAngle{Angle(s.r,vec{W/2,H/2})};
+        const double anglePortCenter{min(abs((s.angle+1)-centerAngle),abs((s.angle-5)-centerAngle))};
+        const double angleStarboardCenter{min(abs((s.angle+5)-centerAngle),abs((s.angle-1)-centerAngle))};
+        if(Dist(s.r,target)==1 && angleStraight>1.5){// Next to target with bad angle, slow down then rotate (avoid to turn around the target!)
+            return {SLOWER};
+        }
+        int min_dist{Dist(n,target)};
+        play best_move{WAIT};
+        //Test port
+        vec nextPort=Neighbour(s.r,(s.angle+1)%6);
+        if(nextPort.valid()){
+            const int dist{Dist(nextPort,target)};
+            if(dist<min_dist || (dist==min_dist && anglePort<angleStraight-0.5) ){
+                min_dist=dist;
+                best_move={PORT};
+            }
+        }
+        // Test starboard
+        vec nextStarboard=Neighbour(s.r,(s.angle+5)%6);
+        if(nextStarboard.valid()){
+            const int dist{Dist(nextStarboard,target)};
+            if(dist<min_dist
+                    || (dist==min_dist && angleStarboard<anglePort-0.5 && best_move.type==PORT)
+                    || (dist==min_dist && angleStarboard<angleStraight-0.5 && best_move.type==WAIT)
+                    || (dist==min_dist && best_move.type==PORT && angleStarboard==anglePort
+                            && angleStarboardCenter<anglePortCenter)
+                    || (dist==min_dist && best_move.type==PORT && angleStarboard==anglePort
+                            && angleStarboardCenter==anglePortCenter && (s.angle==1||s.angle==4))){
+                min_dist=dist;
+                best_move={STARBOARD};
+            }
+        }
+        return best_move;
+    }
+    else if(s.speed==0){
+        const double targetAngle{Angle(s.r,target)};
+        const double angleStraight{min(abs(s.angle-targetAngle),6-abs(s.angle-targetAngle))};
+        const double anglePort{min(abs((s.angle+1)-targetAngle),abs((s.angle-5)-targetAngle))};
+        const double angleStarboard{min(abs((s.angle+5)-targetAngle),abs((s.angle-1)-targetAngle))};
+
+        const double centerAngle{Angle(s.r,vec{W/2,H/2})};
+        const double anglePortCenter{min(abs((s.angle+1)-centerAngle),abs((s.angle-5)-centerAngle))};
+        const double angleStarboardCenter{min(abs((s.angle+5)-centerAngle),abs((s.angle-1)-centerAngle))};
+
+        vec n=Neighbour(s.r,s.angle);
+        play best_move{WAIT};
+        if(anglePort<=angleStarboard){
+            best_move={PORT};
+        }
+        if(angleStarboard<anglePort || angleStarboard==anglePort && angleStarboardCenter<anglePortCenter
+                || angleStarboard==anglePort && angleStarboardCenter==anglePortCenter && (s.angle==1 || s.angle==4)){
+            best_move={STARBOARD};
+        }
+        if(n.valid() && angleStraight<=anglePort && angleStraight<=angleStarboard){
+            best_move={FASTER};
+        }
+        return best_move;
+    }
+}
+
 strat StringToStrat(const state &S,const AI &Bot,const string &M_str){
     strat M;
     vector<int> Boat_Id;
@@ -549,7 +639,9 @@ strat StringToStrat(const state &S,const AI &Bot,const string &M_str){
             M[id]=play{WAIT};
         }
         else if(type=="MOVE"){
-            M[id]=play{MOVE};
+            vec target;
+            ss2 >> target;
+            M[id]=Basic_Move(S,*find_if(S.S.begin(),S.S.end(),[&](const ship &s){return s.id==id;}),target);
         }
         else{
             cerr << "Invalid move from AI " << Bot.name << ": " << M_str << endl;
