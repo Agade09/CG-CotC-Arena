@@ -835,7 +835,7 @@ int main(int argc,char **argv){
     array<double,2> points{0,0};
     #pragma omp parallel num_threads(N_Threads) shared(games,points,Bot_Names)
     while(!stop){
-        int winner{Play_Round(Bot_Names)};
+        const int winner{Play_Round(Bot_Names)};
         if(winner==-1){//Draw
             #pragma omp atomic
             ++draws;
@@ -845,6 +845,7 @@ int main(int argc,char **argv){
             points[1]+=0.5;
         }
         else{//Win
+            #pragma omp atomic
             ++points[winner];
         }
         #pragma omp atomic
